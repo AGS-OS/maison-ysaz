@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<!-- MAISON YSAZ — site complet dans un seul fichier.
+     Styles, données et comportement sont ici.
+     Pour ajouter un café : chercher « const CAFES » plus bas. -->
+
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maison YSAZ — Une couleur par café</title>
+<meta name="description" content="Maison YSAZ n'a pas de boutique : elle a des adresses. Une sélection de cafés parisiens, une couleur pour chacun.">
+
+<meta property="og:title" content="Maison YSAZ">
+<meta property="og:description" content="Nous n'avons pas de boutique. Nous avons des adresses.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+<style>
+/* =========================================================
+   MAISON YSAZ — identité web
+   Papier / Encre + six couleurs du système. Une seule par objet.
+   ========================================================= */
+
+:root{
+  --bleu:#486A80;
+  --jaune:#F4C724;
+  --orange:#EC761F;
+  --rouge:#E93E34;
+  --rose:#FFB5CF;
+  --vert:#8EAD4A;
+
+  --encre:#16151A;
+  --papier:#FDFDFC;
+  --gris:#8C8A86;
+  --ligne:#E4E3E0;
+
+  --marge:clamp(20px, 5vw, 72px);
+  --display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --texte:"Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono:"DM Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+
+html{ scroll-behavior:smooth; }
+
+body{
+  background:var(--papier);
+  color:var(--encre);
+  font-family:var(--texte);
+  font-size:16px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+
+a{ color:inherit; }
+
+::selection{ background:var(--encre); color:var(--papier); }
+
+:focus-visible{ outline:2px solid var(--encre); outline-offset:3px; }
+
+.skip{
+  position:absolute; left:-9999px; top:0; background:var(--encre); color:var(--papier);
+  padding:12px 18px; z-index:100; font-family:var(--mono); font-size:12px;
+}
+.skip:focus{ left:0; }
+
+.mono{
+  font-family:var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  font-size:11px;
+  color:var(--gris);
+}
+
+/* ---------------- barre ---------------- */
+.barre{
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:24px;
+  padding:18px var(--marge);
+  background:rgba(253,253,252,.88);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--ligne);
+}
+.marque{
+  display:flex; align-items:center; gap:9px;
+  text-decoration:none;
+}
+.marque .point{
+  width:11px; height:11px; border-radius:50%; background:var(--rouge);
+  flex:none;
+}
+.marque .nom{
+  font-family:var(--display); font-weight:700; font-size:15px; letter-spacing:-.04em;
+}
+.barre nav{ display:flex; gap:clamp(14px, 3vw, 34px); }
+.barre nav a{
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  text-decoration:none; color:var(--gris);
+  padding-bottom:2px; border-bottom:1px solid transparent;
+  transition:color .25s ease, border-color .25s ease;
+}
+.barre nav a:hover, .barre nav a.actif{ color:var(--encre); border-bottom-color:var(--encre); }
+
+/* ---------------- hero ---------------- */
+.hero{
+  min-height:calc(100svh - 61px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center;
+  padding:80px var(--marge) 120px;
+  position:relative;
+}
+.point-hero{
+  display:block;
+  width:clamp(46px, 7vw, 84px);
+  aspect-ratio:1;
+  border-radius:50%;
+  background:var(--rouge);
+  margin:0 auto clamp(26px, 3.6vw, 46px);
+  animation:apparait .9s cubic-bezier(.2,.7,.3,1) both;
+}
+.hero h1{
+  font-family:var(--display);
+  font-weight:700;
+  font-size:clamp(42px, 11.5vw, 168px);
+  line-height:.92;
+  letter-spacing:-.05em;
+  animation:apparait .9s .12s cubic-bezier(.2,.7,.3,1) both;
+}
+.devise{
+  margin-top:clamp(28px, 4vw, 52px);
+  font-size:clamp(19px, 2.4vw, 30px);
+  line-height:1.32;
+  letter-spacing:-.015em;
+  animation:apparait .9s .24s cubic-bezier(.2,.7,.3,1) both;
+}
+.sous-devise{
+  margin-top:16px;
+  color:var(--gris);
+  font-size:clamp(13px, 1.3vw, 16px);
+  animation:apparait .9s .34s cubic-bezier(.2,.7,.3,1) both;
+}
+@keyframes apparait{
+  from{ opacity:0; transform:translateY(14px); }
+  to{ opacity:1; transform:none; }
+}
+
+.descendre{
+  position:absolute; bottom:34px; left:50%; transform:translateX(-50%);
+  width:34px; height:34px; display:grid; place-items:center;
+}
+.descendre span{
+  width:1px; height:26px; background:var(--ligne); display:block;
+  animation:respire 2.6s ease-in-out infinite;
+}
+@keyframes respire{ 0%,100%{ opacity:.35; height:18px } 50%{ opacity:1; height:30px } }
+
+/* ---------------- sections ---------------- */
+.section{
+  padding:clamp(72px, 11vw, 150px) var(--marge);
+  border-top:1px solid var(--ligne);
+}
+.oeil{
+  font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--gris);
+  display:flex; align-items:center; gap:10px;
+}
+.oeil::before{
+  content:""; width:7px; height:7px; border-radius:50%; background:var(--rouge); flex:none;
+}
+.deux{
+  display:grid;
+  grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+  gap:clamp(28px, 6vw, 90px);
+  margin-top:clamp(30px, 4vw, 54px);
+  align-items:start;
+}
+.deux h2{
+  font-family:var(--display);
+  font-weight:700;
+  font-size:clamp(27px, 4.2vw, 55px);
+  line-height:1.04;
+  letter-spacing:-.035em;
+}
+.texte p{ max-width:46ch; }
+.texte p + p{ margin-top:16px; }
+.texte p:first-child{ font-size:clamp(16px, 1.35vw, 18px); }
+.texte p:not(:first-child){ color:#3A3941; font-size:15px; }
+
+/* ---------------- créations ---------------- */
+.creations{
+  list-style:none;
+  margin-top:clamp(40px, 6vw, 76px);
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+  gap:clamp(16px, 2vw, 26px);
+}
+.creation{
+  border-radius:14px;
+  padding:26px 24px 22px;
+  min-height:230px;
+  display:flex; flex-direction:column; justify-content:space-between;
+  color:#fff;
+}
+.creation .pt{ width:13px; height:13px; border-radius:50%; background:#fff; }
+.creation h3{
+  font-family:var(--display); font-weight:700; font-size:26px; letter-spacing:-.035em;
+  margin-top:auto;
+}
+.creation .detail{ margin-top:8px; font-size:14px; color:rgba(255,255,255,.9); }
+.creation .signature{
+  margin-top:16px; font-family:var(--mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:rgba(255,255,255,.85);
+}
+.creation.sombre{ color:var(--encre); }
+.creation.sombre .pt{ background:var(--encre); }
+.creation.sombre .detail{ color:rgba(22,21,26,.75); }
+.creation.sombre .signature{ color:rgba(22,21,26,.7); }
+
+/* ---------------- carte ---------------- */
+.carte-bloc{
+  position:relative;
+  margin-top:clamp(36px, 5vw, 64px);
+  border:1px solid var(--ligne);
+  border-radius:16px;
+  overflow:hidden;
+  background:#EFEEEB;
+}
+#plan{
+  width:100%;
+  height:clamp(420px, 66vh, 660px);
+  background:#EFEEEB;
+}
+
+/* point sur la carte */
+.pastille{
+  width:22px; height:22px; border-radius:50%;
+  box-shadow:0 0 0 0 rgba(0,0,0,.18);
+  transition:transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease;
+  cursor:pointer;
+}
+.pastille:hover, .pastille.active{
+  transform:scale(1.28);
+  box-shadow:0 6px 18px rgba(0,0,0,.22);
+}
+
+/* fiche du café */
+.fiche{
+  position:absolute; top:18px; right:18px; z-index:1000;
+  width:min(330px, calc(100% - 36px));
+  background:var(--papier);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 18px 44px rgba(22,21,26,.18);
+  animation:fiche-entre .32s cubic-bezier(.2,.7,.3,1) both;
+}
+@keyframes fiche-entre{
+  from{ opacity:0; transform:translateY(-8px) scale(.98); }
+  to{ opacity:1; transform:none; }
+}
+.fiche .photo{
+  display:block; width:100%; height:172px; object-fit:cover; object-position:center 26%;
+  background:var(--ligne);
+}
+.fiche .corps{ padding:18px 20px 20px; }
+.fiche .bandeau{ display:flex; align-items:center; gap:8px; }
+.fiche .bandeau .pt{ width:10px; height:10px; border-radius:50%; flex:none; }
+.fiche .bandeau .couleur{
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--gris);
+}
+.fiche h3{
+  font-family:var(--display); font-weight:700; font-size:23px; letter-spacing:-.035em;
+  margin-top:9px;
+}
+.fiche .ligne{ margin-top:12px; font-size:14px; line-height:1.5; }
+.fiche .ligne .k{
+  display:block; font-family:var(--mono); font-size:9.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--gris); margin-bottom:3px;
+}
+.fiche .actions{ margin-top:18px; display:flex; gap:10px; flex-wrap:wrap; }
+.fiche .actions a{
+  font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  text-decoration:none; padding:9px 13px; border-radius:99px;
+  border:1px solid var(--encre);
+  transition:background .2s ease, color .2s ease;
+}
+.fiche .actions a:hover{ background:var(--encre); color:var(--papier); }
+.fiche .fermer{
+  position:absolute; top:12px; right:12px;
+  width:30px; height:30px; border-radius:50%; border:none;
+  background:rgba(253,253,252,.92); color:var(--encre);
+  font-size:17px; line-height:1; cursor:pointer;
+  display:grid; place-items:center;
+}
+
+/* liste d'adresses sous la carte */
+.adresses{
+  list-style:none;
+  margin-top:clamp(26px, 3vw, 40px);
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
+  gap:2px 26px;
+}
+.adresses li{
+  border-top:1px solid var(--ligne);
+  padding:16px 0;
+  display:flex; gap:11px; align-items:flex-start;
+}
+.adresses .pt{ width:11px; height:11px; border-radius:50%; margin-top:5px; flex:none; }
+.adresses .nom{ font-weight:700; letter-spacing:-.01em; }
+.adresses .adr{ font-size:14px; color:#3A3941; }
+.adresses button{
+  background:none; border:none; padding:0; text-align:left; cursor:pointer;
+  font-family:inherit; color:inherit;
+}
+.adresses button:hover .nom{ text-decoration:underline; text-underline-offset:3px; }
+
+/* ---------------- pied ---------------- */
+.pied{ padding:clamp(56px, 7vw, 90px) var(--marge) 0; border-top:1px solid var(--ligne); }
+.pied p{ text-align:center; }
+.pied a{ color:var(--gris); text-decoration:none; }
+.pied a:hover{ color:var(--encre); }
+.bande{ display:flex; height:9px; margin-top:clamp(40px, 5vw, 64px); }
+.bande span{ flex:1; }
+
+/* ---------------- responsive ---------------- */
+@media (max-width:860px){
+  .deux{ grid-template-columns:1fr; }
+  .fiche{
+    position:static; width:100%; border-radius:0;
+    box-shadow:none; border-top:1px solid var(--ligne);
+  }
+  .barre{ flex-direction:column; align-items:flex-start; gap:12px; }
+  .hero{ min-height:auto; padding-top:60px; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  html{ scroll-behavior:auto; }
+  *,*::before,*::after{ animation:none !important; transition:none !important; }
+}
+
+.plan-absent{
+  display:grid; place-items:center; height:100%; padding:24px; text-align:center;
+  font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--gris);
+}
+
+/* Leaflet : discrétion */
+.leaflet-container{ background:#EFEEEB; font-family:var(--texte); }
+.leaflet-control-attribution{
+  font-size:9px !important; background:rgba(253,253,252,.8) !important; color:var(--gris) !important;
+}
+.leaflet-control-attribution a{ color:var(--gris) !important; }
+.leaflet-bar a{
+  color:var(--encre) !important; border-radius:0 !important;
+}
+
+</style>
+</head>
+
+<body>
+
+<a class="skip" href="#maison">Aller au contenu</a>
+
+<header class="barre">
+  <a class="marque" href="#haut" aria-label="Maison YSAZ — accueil">
+    <span class="point" aria-hidden="true"></span>
+    <span class="nom">MAISON YSAZ</span>
+  </a>
+  <nav aria-label="Navigation principale">
+    <a href="#maison">La maison</a>
+    <a href="#creations">Les créations</a>
+    <a href="#carte">Où déguster</a>
+  </nav>
+</header>
+
+<main id="haut">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="hero-bloc">
+      <span class="point-hero" aria-hidden="true"></span>
+      <h1>MAISON YSAZ</h1>
+      <p class="devise">Nous n'avons pas de boutique.<br>Nous avons des adresses.</p>
+      <p class="sous-devise">Une sélection de cafés parisiens. Une couleur pour chacun.</p>
+    </div>
+    <a class="descendre" href="#maison" aria-label="Descendre">
+      <span></span>
+    </a>
+  </section>
+
+  <!-- ============ LA MAISON ============ -->
+  <section id="maison" class="section">
+    <p class="oeil">La maison</p>
+    <div class="deux">
+      <h2>Une pâtisserie qui vit dans les cafés des autres.</h2>
+      <div class="texte">
+        <p>Maison YSAZ est une maison de pâtisserie parisienne. Elle n'a pas de vitrine :
+        ses créations sont élaborées chaque semaine et signées à la carte d'une sélection
+        de cafés indépendants de la ville.</p>
+        <p>Chaque café associé reçoit une couleur du système, réservée à son adresse pendant
+        toute la durée de la collaboration. Six couleurs, pas soixante : la rareté fait partie
+        du projet.</p>
+        <p>La carte de Paris est notre seule campagne.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LES CRÉATIONS ============ -->
+  <section id="creations" class="section">
+    <p class="oeil">Les créations</p>
+    <div class="deux">
+      <h2>Une création à la fois,<br>faite pour durer à la carte.</h2>
+      <div class="texte">
+        <p>Nous préférons une pièce mémorable à vingt pièces correctes. Chaque création reste
+        associée à la Maison et se présente sous son nom auprès de la clientèle du café.</p>
+      </div>
+    </div>
+
+    <ul class="creations" id="liste-creations"></ul>
+  </section>
+
+  <!-- ============ OÙ DÉGUSTER ============ -->
+  <section id="carte" class="section section-carte">
+    <p class="oeil">Où déguster</p>
+    <div class="deux">
+      <h2>Le plan.</h2>
+      <div class="texte">
+        <p>Un point par adresse, dans la couleur du café. Cliquez sur un point pour voir
+        l'adresse et la création qui s'y trouve.</p>
+      </div>
+    </div>
+
+    <div class="carte-bloc">
+      <div id="plan" role="application" aria-label="Carte des cafés partenaires à Paris"></div>
+      <aside class="fiche" id="fiche" hidden></aside>
+    </div>
+
+    <ul class="adresses" id="liste-adresses"></ul>
+  </section>
+
+</main>
+
+<footer class="pied">
+  <p class="mono">MAISON YSAZ · PARIS · <a href="https://instagram.com/MaisonYSAZ" rel="noopener">@MAISONYSAZ</a></p>
+  <div class="bande" aria-hidden="true">
+    <span style="background:#486A80"></span>
+    <span style="background:#F4C724"></span>
+    <span style="background:#EC761F"></span>
+    <span style="background:#E93E34"></span>
+    <span style="background:#FFB5CF"></span>
+    <span style="background:#8EAD4A"></span>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+/* =========================================================
+   MAISON YSAZ — données
+   -----------------------------------------------------------------
+   C'EST LE SEUL FICHIER À MODIFIER POUR AJOUTER UNE ADRESSE.
+   Pour chaque nouveau café : copier un bloc, changer les valeurs,
+   choisir une couleur encore libre dans COULEURS.
+   ========================================================= */
+
+/* Les six couleurs du système. Une seule par café, réservée
+   pendant toute la durée de la collaboration. */
+const COULEURS = {
+  bleu:   { hex: "#486A80", nom: "Bleu Zinc",     texte: "clair" },
+  jaune:  { hex: "#F4C724", nom: "Jaune Midi",    texte: "sombre" },
+  orange: { hex: "#EC761F", nom: "Orange Marché", texte: "clair" },
+  rouge:  { hex: "#E93E34", nom: "Rouge Maison",  texte: "clair" },
+  rose:   { hex: "#FFB5CF", nom: "Rose Vitrine",  texte: "sombre" },
+  vert:   { hex: "#8EAD4A", nom: "Vert Jardin",   texte: "clair" }
+};
+
+/* Les adresses partenaires. */
+const CAFES = [
+  {
+    id: "convos",
+    nom: "Convos & Co.",
+    couleur: "orange",
+    adresse: "3 rue Sainte-Foy",
+    ville: "75002 Paris",
+    arrondissement: "2ᵉ",
+    // Plus code V992+C2 Paris (8FW4V992+C2)
+    coords: [48.868562, 2.350062],
+    creation: "Cake Citron",
+    mention: "Cake Citron — signé MAISON YSAZ",
+    instagram: "convos.cafe",
+    horaires: "Lun–Ven 9h–18h · Sam–Dim 10h–18h",
+    photo: "assets/convos.jpg",
+    depuis: "Août 2026"
+  }
+];
+
+/* Les créations de la maison. */
+const CREATIONS = [
+  {
+    nom: "Cake Citron",
+    detail: "Dix parts par cake. Citron jaune, yaourt à la grecque, glaçage au sucre glace.",
+    couleur: "orange",
+    ou: "Convos & Co."
+  }
+];
+
+/* =========================================================
+   MAISON YSAZ — comportement
+   ========================================================= */
+
+(function () {
+  "use strict";
+
+  const couleurDe = (cle) => COULEURS[cle] || COULEURS.rouge;
+
+  /* ---------- créations ---------- */
+  const listeCreations = document.getElementById("liste-creations");
+  if (listeCreations) {
+    CREATIONS.forEach((c) => {
+      const col = couleurDe(c.couleur);
+      const li = document.createElement("li");
+      li.className = "creation" + (col.texte === "sombre" ? " sombre" : "");
+      li.style.background = col.hex;
+      li.innerHTML =
+        '<span class="pt" aria-hidden="true"></span>' +
+        "<div>" +
+        "<h3>" + c.nom + "</h3>" +
+        '<p class="detail">' + c.detail + "</p>" +
+        '<p class="signature">Chez ' + c.ou + "</p>" +
+        "</div>";
+      listeCreations.appendChild(li);
+    });
+  }
+
+  /* ---------- carte ---------- */
+  const plan = document.getElementById("plan");
+  const fiche = document.getElementById("fiche");
+  const carteDispo = plan && typeof L !== "undefined";
+
+  /* Si la carte ne charge pas (hors ligne, script bloqué), la liste
+     d'adresses reste affichée : l'information essentielle ne dépend
+     jamais du plan. */
+  if (!carteDispo) {
+    if (plan) {
+      plan.innerHTML =
+        '<p class="plan-absent">Le plan ne s\'est pas chargé. Les adresses restent ci-dessous.</p>';
+    }
+    remplirAdresses(null);
+    activerNav();
+    return;
+  }
+
+  const carte = L.map(plan, {
+    center: [48.8634, 2.3488],
+    zoom: 13,
+    minZoom: 11,
+    maxZoom: 17,
+    scrollWheelZoom: false,
+    zoomControl: true
+  });
+
+  L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 19
+    }
+  ).addTo(carte);
+
+  const marqueurs = {};
+
+  CAFES.forEach((cafe) => {
+    const col = couleurDe(cafe.couleur);
+    const icone = L.divIcon({
+      className: "",
+      html:
+        '<span class="pastille" style="background:' +
+        col.hex +
+        '" role="button" tabindex="0" aria-label="' +
+        cafe.nom +
+        '"></span>',
+      iconSize: [22, 22],
+      iconAnchor: [11, 11]
+    });
+
+    const m = L.marker(cafe.coords, { icon: icone, keyboard: true, title: cafe.nom }).addTo(carte);
+    marqueurs[cafe.id] = m;
+
+    const ouvre = () => afficherFiche(cafe);
+    m.on("click", ouvre);
+    m.on("mouseover", ouvre);
+    m.on("keypress", ouvre);
+  });
+
+  function afficherFiche(cafe) {
+    const col = couleurDe(cafe.couleur);
+
+    fiche.innerHTML =
+      '<button class="fermer" type="button" aria-label="Fermer">&times;</button>' +
+      (cafe.photo
+        ? '<img class="photo" src="' +
+          cafe.photo +
+          '" alt="' +
+          cafe.nom +
+          '" onerror="this.remove()">'
+        : "") +
+      '<div class="corps">' +
+      '<div class="bandeau"><span class="pt" style="background:' +
+      col.hex +
+      '"></span><span class="couleur">' +
+      col.nom +
+      " · " +
+      cafe.arrondissement +
+      " arrondissement</span></div>" +
+      "<h3>" +
+      cafe.nom +
+      "</h3>" +
+      '<p class="ligne"><span class="k">Adresse</span>' +
+      cafe.adresse +
+      "<br>" +
+      cafe.ville +
+      "</p>" +
+      '<p class="ligne"><span class="k">La création</span>' +
+      cafe.mention +
+      "</p>" +
+      (cafe.horaires
+        ? '<p class="ligne"><span class="k">Horaires</span>' + cafe.horaires + "</p>"
+        : "") +
+      '<div class="actions">' +
+      '<a href="https://instagram.com/' +
+      cafe.instagram +
+      '" rel="noopener" target="_blank">@' +
+      cafe.instagram +
+      "</a>" +
+      '<a href="https://www.google.com/maps/search/?api=1&query=' +
+      encodeURIComponent(cafe.adresse + ", " + cafe.ville) +
+      '" rel="noopener" target="_blank">Itinéraire</a>' +
+      "</div></div>";
+
+    fiche.hidden = false;
+    fiche.querySelector(".fermer").addEventListener("click", () => {
+      fiche.hidden = true;
+      document.querySelectorAll(".pastille").forEach((p) => p.classList.remove("active"));
+    });
+
+    document.querySelectorAll(".pastille").forEach((p) => p.classList.remove("active"));
+    const actif = marqueurs[cafe.id];
+    if (actif && actif._icon) {
+      const pastille = actif._icon.querySelector(".pastille");
+      if (pastille) pastille.classList.add("active");
+    }
+  }
+
+  remplirAdresses(carte);
+  activerNav();
+
+  /* ---------- liste d'adresses ---------- */
+  function remplirAdresses(carteOuNull) {
+  const listeAdresses = document.getElementById("liste-adresses");
+  if (listeAdresses) {
+    CAFES.forEach((cafe) => {
+      const col = couleurDe(cafe.couleur);
+      const li = document.createElement("li");
+      li.innerHTML =
+        '<span class="pt" style="background:' + col.hex + '" aria-hidden="true"></span>' +
+        "<button type=\"button\">" +
+        '<span class="nom">' + cafe.nom + "</span><br>" +
+        '<span class="adr">' + cafe.adresse + " · " + cafe.ville + "</span><br>" +
+        '<span class="adr">' + cafe.creation + "</span>" +
+        "</button>";
+      li.querySelector("button").addEventListener("click", () => {
+        if (carteOuNull) {
+          carteOuNull.setView(cafe.coords, 16, { animate: true });
+          afficherFiche(cafe);
+          document.getElementById("carte").scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          window.open(
+            "https://www.google.com/maps/search/?api=1&query=" +
+              encodeURIComponent(cafe.adresse + ", " + cafe.ville),
+            "_blank"
+          );
+        }
+      });
+      listeAdresses.appendChild(li);
+    });
+  }
+  }
+
+  /* ---------- navigation active ---------- */
+  function activerNav() {
+  const liens = document.querySelectorAll(".barre nav a");
+  const sections = [...liens].map((a) => document.querySelector(a.getAttribute("href")));
+  const obs = new IntersectionObserver(
+    (entrees) => {
+      entrees.forEach((e) => {
+        if (!e.isIntersecting) return;
+        liens.forEach((a) =>
+          a.classList.toggle("actif", a.getAttribute("href") === "#" + e.target.id)
+        );
+      });
+    },
+    { rootMargin: "-45% 0px -50% 0px" }
+  );
+  sections.forEach((s) => s && obs.observe(s));
+  }
+})();
+
+</script>
+</body>
+</html>
